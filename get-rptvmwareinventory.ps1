@@ -5,7 +5,7 @@ Created on:
 Created with VSCode
 Version 1.0
 Last Updated: 
-Last Updated by: John Shelton | c: 260-410-1200 | e: john.shelton@lucky13solutions.com
+Last Updated by: John Shelton | c: 260-410-1200 | e: john.shelton@wegmans.com
 
 Purpose: Generate a report of all VMWare VMs, their datastores, and the networking
 
@@ -27,7 +27,7 @@ param (
 Clear-Host
 #
 # Load VMWare PSSnapin
-#
+# 
 Add-PSSnapin VMWare.VimAutomation.Core
 #
 # Define Output Variables
