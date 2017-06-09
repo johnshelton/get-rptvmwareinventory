@@ -1,3 +1,5 @@
+# #Requires -RunAsAdministrator
+#Requires -Modules PowershellGet
 <#
 =======================================================================================
 File Name: get-rptvmwareinventory.ps1
@@ -24,15 +26,35 @@ param (
   [string[]] $VCenterServers = $(throw "-VCenterServers is required.  Pass as array.")
 )
 #
+# Check if VMWare Module is installed and if not install it
+#
+$VMWareModuleInstalledLoop = 0
+While ($VMWareModuleInstalledLoop -lt "4" -and $VMWareModuleInstalled -ne $True) {
+  $VMWareModuleInstalled = Get-InstalledModule -Name VMWare*
+  If ($VMWareModuleInstalled) {Write-Host "VMWare Module Installed.  Continuing Script."; $VMWareModuleInstalled = $True} Else {Install-Module "VMWare.powercli" -Scope AllUsers -Force -AllowClobber; $VMWareModuleInstalled = $False }
+  $VMWareModuleInstalledLoop ++
+  If ($VMWareModuleInstalledLoop -ge "4") {Write-host "VMWare Module is not installed and the auto installation failed. Manual intervention is needed"; Exit}
+}
+#
+# Check if ImportExcel Module is installed and if not install it
+#
+$ImportExcelModuleInstalledLoop = 0
+While ($ImportExcelModuleInstalledLoop -lt "4" -and $ImportExcelModuleInstalled -ne $True) {
+  $ImportExcelModuleInstalled = Get-InstalledModule -Name ImportExcel
+  If ($ImportExcelModuleInstalled) {Write-Host "ImportExcel Module Installed.  Continuing Script."; $ImportExcelModuleInstalled = $True} Else {Install-Module "ImportExcel" -Scope AllUsers -Force; $ImportExcelModuleInstalled = $False }
+  $ImportExcelModuleInstalledLoop ++
+  If ($ImportExcelModuleInstalledLoop -ge "4") {Write-host "ImportExcel is not installed and the auto installation failed. Manual intervention is needed"; Exit}
+}
+#
 Clear-Host
 #
 # Load VMWare PSSnapin
 # 
-Add-PSSnapin VMWare.VimAutomation.Core
+# Add-PSSnapin VMWare.VimAutomation.Core
 #
 # Define Output Variables
 #
-$ExecutionStamp = Get-Date -Format yyyyMMdd_hh-mm-ss
+$ExecutionStamp = Get-Date -Format yyyyMMdd_HH-mm-ss
 $path = "c:\temp\"
 $FilenamePrepend = 'rpt_'
 $FullFilename = "get-rptvmwareinventory.ps1"
@@ -68,7 +90,9 @@ foreach($VCenterServer in $VCenterServers){
     IF(!$VMDNS.Name) {$VMConnected = "No DNS Name Found"}
     Else {$VMConnected = Test-Connection $VMDNS.Name -Count 1 -Quiet}
     $VMDatastores = Get-Datastore -RelatedObject $VM
-    $VMDatastoresNames = [system.String]::Join(" | ",$VMDatastores.Name)
+    IF($VMDatastores.count -gt 1){
+      $VMDatastoresNames = [system.String]::Join(" | ",$VMDatastores.Name)
+    }
     $TempDataStoreCluster = Get-VM $VM.Name | Get-DatastoreCluster
     IF(!$TempDataStoreCluster) {$TempDataStoreCluster = "Datastore is not defined in a DataStore Cluster on this Host"}
     $TempVMHost = $VM.VMHost.Name
@@ -120,3 +144,4 @@ $VMDiskInfo | Sort-Object VCenter, VMHost, VM, Name | Export-Excel -Path $Output
 $VMDiskInfo | Sort-Object VCenter, Host, VM | Export-Excel -Path $OutputFile -WorkSheetname "VM Disk Info PivotTable" -TableName "PT_VMDiskInfo" -HideSheet "VM Disk Info PivotTable" -TableStyle Medium4 -AutoSize -IncludePivotTable -PivotRows VCenter, Host, VM  -PivotData @{CapacityGB='sum'} -IncludePivotChart -ChartType PieExploded3D
 $VMDiskInfo | Sort-Object DataStore, VCenter, VM | Export-Excel -Path $OutputFile -WorkSheetname "DataStore Pivot Data" -TableName "PT_DataStoreInfo" -HideSheet "DataStore Pivot Data" -TableStyle Medium4 -AutoSize -IncludePivotTable -PivotRows DataStore, VCenter, Host  -PivotData @{CapacityGB='sum'} -IncludePivotChart -ChartType PieExploded3D
 $CompleteVMInfo | Sort-Object DataStoreCluster, DataStores, VCenter | Export-Excel -Path $OutputFile -WorkSheetname "DataCluster Info" -TableName "PT_DataClusterInfo" -HideSheet "DataCluster Info" -TableStyle Medium4 -AutoSize -IncludePivotTable -PivotRows DataStoreCluster, Datastores, VCenterServer -PivotData @{UsedSpaceGB='sum'} -IncludePivotChart -ChartType PieExploded3D
+Write-Host "The Report was generated and saved to $OutputFile"
