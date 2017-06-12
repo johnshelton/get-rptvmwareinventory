@@ -3,15 +3,17 @@
 <#
 =======================================================================================
 File Name: get-rptvmwareinventory.ps1
-Created on: 
+Created on: 2017-05-16
 Created with VSCode
 Version 1.0
 Last Updated: 
 Last Updated by: John Shelton | c: 260-410-1200 | e: john.shelton@wegmans.com
 
-Purpose: Generate a report of all VMWare VMs, their datastores, and the networking
+Purpose: Generate a report of all VMWare VMs, their datastores, and test connectivity.
+         
 
-Notes: 
+Notes: By default the script will not test connectivity unless you pass the -TestConnectivity
+       parameter.
 
 Change Log:
 
@@ -23,7 +25,8 @@ Change Log:
 #
 param (
   [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
-  [string[]] $VCenterServers = $(throw "-VCenterServers is required.  Pass as array.")
+  [string[]] $VCenterServers = $(throw "-VCenterServers is required.  Pass as array."),
+  [switch]$TestConnectivity
 )
 #
 # Check if VMWare Module is installed and if not install it
@@ -49,7 +52,7 @@ While ($ImportExcelModuleInstalledLoop -lt "4" -and $ImportExcelModuleInstalled 
 Clear-Host
 #
 # Load VMWare PSSnapin
-# 
+#
 # Add-PSSnapin VMWare.VimAutomation.Core
 #
 # Define Output Variables
@@ -69,8 +72,9 @@ IF($PathExists -eq $False)
 #
 $VMDiskInfo = @()
 $CountVCenterServers = $VCenterServers.Count
-$PercentVCenterServers = 0
-$VCenterServersProcessed = 0
+# $PercentVCenterServers = 0
+# $VCenterServersProcessed = 0
+$VMsProcessed = 0
 $CompleteVMInfo = @()
 foreach($VCenterServer in $VCenterServers){
   # Define Output Variable
@@ -137,9 +141,8 @@ foreach($VCenterServer in $VCenterServers){
       }
     }
   }
-  $AllVMInfo | Sort-Object VCenterServer, Host, Name | Export-Excel -Path $OutputFile -WorkSheetname $VCenterServer -TableName $VCenterServer -TableStyle Medium4 -AutoSize
-  $VMsProcessed = 0
 }
+$AllVMInfo | Sort-Object VCenterServer, Host, Name | Export-Excel -Path $OutputFile -WorkSheetname "AllVMs" -TableName "ALlVMs" -TableStyle Medium4 -AutoSize
 $VMDiskInfo | Sort-Object VCenter, VMHost, VM, Name | Export-Excel -Path $OutputFile -WorkSheetname "VM Disk Info" -TableName "VMDiskInfo" -TableStyle Medium4 -AutoSize
 $VMDiskInfo | Sort-Object VCenter, Host, VM | Export-Excel -Path $OutputFile -WorkSheetname "VM Disk Info PivotTable" -TableName "PT_VMDiskInfo" -HideSheet "VM Disk Info PivotTable" -TableStyle Medium4 -AutoSize -IncludePivotTable -PivotRows VCenter, Host, VM  -PivotData @{CapacityGB='sum'} -IncludePivotChart -ChartType PieExploded3D
 $VMDiskInfo | Sort-Object DataStore, VCenter, VM | Export-Excel -Path $OutputFile -WorkSheetname "DataStore Pivot Data" -TableName "PT_DataStoreInfo" -HideSheet "DataStore Pivot Data" -TableStyle Medium4 -AutoSize -IncludePivotTable -PivotRows DataStore, VCenter, Host  -PivotData @{CapacityGB='sum'} -IncludePivotChart -ChartType PieExploded3D
